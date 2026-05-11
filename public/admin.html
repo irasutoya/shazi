@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>管理后台</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/styles.css?v=20260511d">
+  </head>
+  <body class="admin-body">
+    <header class="site-header">
+      <a class="brand" href="/admin">
+        <span class="brand-mark">傻逼</span>
+        <span>
+          <strong>管理后台</strong>
+          <small>傻子资料维护</small>
+        </span>
+      </a>
+      <nav class="top-nav" aria-label="后台导航">
+        <a href="/">查看前台</a>
+        <button class="ghost-button" id="logoutButton" type="button">退出</button>
+        <button class="ghost-button" id="newFriendButton" type="button">新建</button>
+      </nav>
+    </header>
+
+    <main class="admin-shell">
+      <section class="admin-sidebar" aria-label="傻子列表">
+        <div class="panel-heading">
+          <span>拖动排序</span>
+          <strong id="friendCount">0</strong>
+        </div>
+        <div id="adminList" class="admin-list"></div>
+      </section>
+
+      <section class="editor-panel" aria-label="编辑资料">
+        <div class="editor-title">
+          <h1 id="editorHeading">新建傻子资料</h1>
+          <div class="editor-actions">
+            <button class="secondary-button" id="previewButton" type="button">预览页面</button>
+            <button class="danger-button" id="deleteButton" type="button">删除</button>
+            <button class="primary-button" form="friendForm" type="submit">保存</button>
+          </div>
+        </div>
+
+        <form id="friendForm" class="friend-form">
+          <input id="friendId" type="hidden">
+
+          <label class="field">
+            <span>名字</span>
+            <input id="name" name="name" required>
+          </label>
+
+          <label class="field">
+            <span>联系方式</span>
+            <input id="contact" name="contact">
+          </label>
+
+          <section class="markdown-editor" aria-label="Markdown 编辑器">
+            <div class="markdown-toolbar">
+              <button type="button" data-insert="# 标题">标题</button>
+              <button type="button" data-wrap="**">加粗</button>
+              <button type="button" data-insert="- 列表项">列表</button>
+              <button type="button" data-insert="[链接文字](https://)">链接</button>
+              <label class="upload-button">
+                <input id="imageUpload" type="file" accept="image/*" multiple>
+                <span>上传图片</span>
+              </label>
+            </div>
+            <div class="editor-grid">
+              <label class="field markdown-field">
+                <span>Markdown 内容</span>
+                <textarea id="markdown" name="markdown" rows="20" spellcheck="false"></textarea>
+              </label>
+              <section class="markdown-preview" aria-label="预览">
+                <div id="markdownPreview" class="markdown-body"></div>
+              </section>
+            </div>
+          </section>
+
+          <p id="formMessage" class="form-message" role="status"></p>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="/admin.js?v=20260511d"></script>
+  </body>
+</html>
