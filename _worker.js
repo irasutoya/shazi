@@ -665,7 +665,15 @@ function styles() {
     .markdown-body h2:first-child,.markdown-preview h2:first-child{margin-top:0}
     .markdown-body img,.markdown-preview img{display:block;width:240px;height:240px;object-fit:cover;object-position:left top;border-radius:var(--radius-sm);margin:24px 0;border:1px solid var(--border);cursor:zoom-in;transition:transform .15s}
     .markdown-body img:hover,.markdown-preview img:hover{transform:scale(1.02)}
-    @media (max-width:480px){.markdown-body img,.markdown-preview img{width:160px;height:160px;margin:4px 14px 12px 0}}
+    .preview-image-frame{position:relative;display:block;width:max-content;max-width:100%;margin:24px 0}
+    .preview-image-frame img{margin:0}
+    .preview-image-controls{position:absolute;top:8px;right:8px;display:flex;gap:6px;align-items:center;padding:6px;border-radius:var(--radius);background:rgba(255,255,255,.92);border:1px solid var(--border);box-shadow:0 6px 18px rgba(31,35,40,.12);backdrop-filter:blur(8px)}
+    @media (prefers-color-scheme:dark){.preview-image-controls{background:rgba(21,27,35,.92)}}
+    .preview-image-count{min-width:34px;color:var(--muted);font-size:12px;font-weight:600;text-align:center;line-height:1}
+    .preview-move-button{min-height:28px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--button);color:var(--ink);font-weight:600;font-size:12px;cursor:pointer}
+    .preview-move-button:hover:not(:disabled){background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+    .preview-move-button:disabled{opacity:.45;cursor:not-allowed}
+    @media (max-width:480px){.markdown-body img,.markdown-preview img{width:160px;height:160px;margin:4px 14px 12px 0}.preview-image-frame{margin:4px 14px 12px 0}.preview-image-frame img{margin:0}.preview-image-controls{position:static;width:160px;margin-top:6px;justify-content:center}}
     .markdown-body blockquote,.markdown-preview blockquote{margin:24px 0;padding:0 1.2em;border-left:4px solid var(--accent-muted);color:var(--muted)}
     .markdown-body a,.markdown-preview a{font-weight:500}
     .markdown-body pre,.markdown-preview pre{margin:24px 0;background:var(--canvas-subtle);color:var(--ink);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow:auto;white-space:pre}
@@ -896,9 +904,15 @@ function adminScript() {
     });
 
     editorPanel.addEventListener("click", (event) => {
+      const imageMoveButton = event.target.closest("[data-image-move]");
       const actionButton = event.target.closest("[data-action]");
       const toolButton = event.target.closest("[data-tool]");
       const viewButton = event.target.closest("[data-view]");
+      if (imageMoveButton) {
+        event.preventDefault();
+        moveMarkdownImage(Number(imageMoveButton.dataset.imageIndex), imageMoveButton.dataset.imageMove);
+        return;
+      }
       if (actionButton) void handleAction(actionButton.dataset.action);
       if (toolButton) applyMarkdownTool(toolButton.dataset.tool);
       if (viewButton) switchView(viewButton.dataset.view);
@@ -1194,7 +1208,69 @@ function adminScript() {
 
     function updatePreview(markdown) {
       const preview = document.getElementById("markdownPreview");
-      if (preview) preview.innerHTML = renderMarkdown(markdown || "暂无介绍。");
+      if (!preview) return;
+      preview.innerHTML = renderMarkdown(markdown || "暂无介绍。");
+      enhancePreviewImages(preview);
+    }
+
+    function enhancePreviewImages(preview) {
+      const images = Array.from(preview.querySelectorAll("img"));
+      images.forEach((image, index) => {
+        const frame = document.createElement("span");
+        frame.className = "preview-image-frame";
+        frame.dataset.imageIndex = String(index);
+        image.parentNode.insertBefore(frame, image);
+        frame.appendChild(image);
+
+        const controls = document.createElement("span");
+        controls.className = "preview-image-controls";
+        controls.innerHTML =
+          '<span class="preview-image-count">' + (index + 1) + '/' + images.length + '</span>' +
+          '<button class="preview-move-button" type="button" data-image-move="up" data-image-index="' + index + '"' + (index === 0 ? ' disabled' : '') + '>上移</button>' +
+          '<button class="preview-move-button" type="button" data-image-move="down" data-image-index="' + index + '"' + (index === images.length - 1 ? ' disabled' : '') + '>下移</button>';
+        frame.appendChild(controls);
+      });
+    }
+
+    function moveMarkdownImage(imageIndex, direction) {
+      const textarea = activeTextarea || editorPanel.querySelector('[name="introMarkdown"]');
+      if (!textarea || !Number.isInteger(imageIndex)) return;
+
+      const markdown = textarea.value;
+      const tokens = getMarkdownImageTokens(markdown);
+      const targetIndex = direction === "up" ? imageIndex - 1 : imageIndex + 1;
+      if (targetIndex < 0 || targetIndex >= tokens.length) return;
+
+      const first = tokens[Math.min(imageIndex, targetIndex)];
+      const second = tokens[Math.max(imageIndex, targetIndex)];
+      const nextMarkdown =
+        markdown.slice(0, first.start) +
+        second.text +
+        markdown.slice(first.end, second.start) +
+        first.text +
+        markdown.slice(second.end);
+
+      textarea.value = nextMarkdown;
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      const nextIndex = targetIndex;
+      requestAnimationFrame(() => {
+        const nextFrame = document.querySelector('[data-image-index="' + nextIndex + '"]');
+        nextFrame?.scrollIntoView({ block: "center", behavior: "smooth" });
+      });
+    }
+
+    function getMarkdownImageTokens(markdown) {
+      const regex = /!\\[[^\\]]*\\]\\(\\/i\\/[A-Za-z0-9._~:/?#[\\]@!$&'()*+,;=%-]+\\)/g;
+      const tokens = [];
+      let match;
+      while ((match = regex.exec(markdown))) {
+        tokens.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0],
+        });
+      }
+      return tokens;
     }
 
     async function refreshImages() {
