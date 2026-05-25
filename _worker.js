@@ -791,13 +791,6 @@ function styles() {
 
 function adminScript() {
   return `
-    function __name(target, value) {
-      try {
-        Object.defineProperty(target, "name", { value, configurable: true });
-      } catch (error) {}
-      return target;
-    }
-
     let people = Array.isArray(window.__PEOPLE__) ? window.__PEOPLE__ : [];
     let activeId = people[0]?.id || null;
     let activeTextarea = null;
@@ -1304,9 +1297,7 @@ function adminScript() {
       }).join("");
     }
 
-    ${renderMarkdown.toString()}
-    ${inlineMarkdown.toString()}
-    ${escapeHtml.toString()}
+    ${clientMarkdownScript()}
 
     function markDirty() {
       dirty = true;
@@ -1318,6 +1309,140 @@ function adminScript() {
     }
     function escapeMarkdownAlt(value) {
       return String(value).replace(/[\\[\\]]/g, "");
+    }
+  `;
+}
+
+function clientMarkdownScript() {
+  return String.raw`
+    function renderMarkdown(markdown) {
+      const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+      const html = [];
+      let inCode = false;
+      let codeLines = [];
+      let listType = null;
+      let paragraph = [];
+
+      const flushParagraph = () => {
+        if (paragraph.length) {
+          html.push("<p>" + inlineMarkdown(paragraph.join(" ")) + "</p>");
+          paragraph = [];
+        }
+      };
+
+      const closeList = () => {
+        if (listType) {
+          html.push("</" + listType + ">");
+          listType = null;
+        }
+      };
+
+      const openList = (type) => {
+        if (listType !== type) {
+          closeList();
+          html.push("<" + type + ">");
+          listType = type;
+        }
+      };
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+
+        if (/^\x60\x60\x60/.test(trimmed)) {
+          if (inCode) {
+            html.push("<pre><code>" + escapeHtml(codeLines.join("\n")) + "</code></pre>");
+            codeLines = [];
+            inCode = false;
+          } else {
+            flushParagraph();
+            closeList();
+            inCode = true;
+          }
+          continue;
+        }
+
+        if (inCode) {
+          codeLines.push(line);
+          continue;
+        }
+
+        if (!trimmed) {
+          flushParagraph();
+          closeList();
+          continue;
+        }
+
+        if (/^---+$/.test(trimmed)) {
+          flushParagraph();
+          closeList();
+          html.push("<hr>");
+          continue;
+        }
+
+        const heading = line.match(/^(#{1,4})\s+(.+)$/);
+        if (heading) {
+          flushParagraph();
+          closeList();
+          const level = Math.min(heading[1].length, 4);
+          html.push("<h" + level + ">" + inlineMarkdown(heading[2]) + "</h" + level + ">");
+          continue;
+        }
+
+        const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+        if (bullet) {
+          flushParagraph();
+          openList("ul");
+          html.push("<li>" + inlineMarkdown(bullet[1]) + "</li>");
+          continue;
+        }
+
+        const ordered = line.match(/^\s*\d+\.\s+(.+)$/);
+        if (ordered) {
+          flushParagraph();
+          openList("ol");
+          html.push("<li>" + inlineMarkdown(ordered[1]) + "</li>");
+          continue;
+        }
+
+        const quote = line.match(/^>\s?(.+)$/);
+        if (quote) {
+          flushParagraph();
+          closeList();
+          html.push("<blockquote>" + inlineMarkdown(quote[1]) + "</blockquote>");
+          continue;
+        }
+
+        closeList();
+        paragraph.push(line);
+      }
+
+      flushParagraph();
+      closeList();
+      if (inCode) html.push("<pre><code>" + escapeHtml(codeLines.join("\n")) + "</code></pre>");
+      return html.join("\n");
+    }
+
+    function inlineMarkdown(text) {
+      let html = escapeHtml(text);
+      html = html.replace(/!\[([^\]]*)\]\((\/i\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]+)\)/g, '<img src="$2" alt="$1">');
+      html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+      html = html.replace(/\x60([^\x60]+)\x60/g, "<code>$1</code>");
+      html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+      html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+      html = html.replace(/_([^_]+)_/g, "<em>$1</em>");
+      html = html.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+      return html;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[char]));
     }
   `;
 }
