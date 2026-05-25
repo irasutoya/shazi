@@ -1,10 +1,13 @@
 # AGENTS.md — shazi (傻子展览馆)
 
-Single `_worker.js` Cloudflare Workers project. No build step, no dependencies, no package.json.
+Single `_worker.js` (1500 lines) Cloudflare Workers project. No build step, no dependencies, no package.json.
 
 ## Commands
 
-No local dev commands needed. The entire app is a single file deployed directly via the Cloudflare dashboard or `wrangler deploy --name <name> _worker.js`.
+Deploy via:
+- Dashboard: paste `_worker.js` directly
+- CLI: `wrangler deploy` (uses `wrangler.toml`; fill in KV IDs first)
+- One-liner (no config): `wrangler deploy --name shazi _worker.js` (set bindings & env in Dashboard)
 
 ## KV Bindings
 
@@ -15,7 +18,7 @@ Two KV namespaces (or one fallback):
 | `PROFILE_KV` | Stores people list (JSON under key `"people"`) |
 | `IMAGES_KV` | Stores uploaded image binaries |
 
-If only a single KV is bound, use `KV` (or `DATA_KV` / `NOTES_KV`) — the worker falls back in order: `PROFILE_KV` → `DATA_KV` → `NOTES_KV` → `KV`.
+If only a single KV is bound, the worker falls back in order: `PROFILE_KV` → `DATA_KV` → `NOTES_KV` → `KV`. Image KV falls back: `IMAGES_KV` → `IMAGE_KV` → data KV.
 
 ## Environment Variables
 
@@ -47,8 +50,9 @@ Without `ADMIN_USERNAME`/`ADMIN_PASSWORD`, the admin panel shows a "not configur
 
 ## Architecture Notes
 
-- **No framework** — vanilla JS, zero dependencies, ~1400 lines in one file.
-- **Admin JS** is server-injected at `adminScript()` (line 784) and serialized inline. `renderMarkdown()` is duplicated into the client scope (line 1224-1225).
+- **No framework** — vanilla JS, zero dependencies, ~1500 lines in one file.
+- **Admin JS** is server-injected via `adminScript()` as a template literal, serialized inline. `renderMarkdown()` + `inlineMarkdown()` are duplicated into client scope via `Function.toString()`.
+- **Admin keyboard shortcut**: `Ctrl/Cmd+S` saves people data.
 - **Session auth**: HMAC-SHA256 signed cookies, constant-time comparison. `SITE_PASSWORD` uses same signing scheme.
 - **Image storage**: keys prefixed `img:{personId}:{imageId}`. Metadata stored alongside value.
 - **Markdown renderer**: custom minimal parser (`renderMarkdown` + `inlineMarkdown`), no library.

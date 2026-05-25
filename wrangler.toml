@@ -1,0 +1,30 @@
+name = "shazi"
+main = "_worker.js"
+compatibility_date = "2026-05-01"
+
+# 在 Cloudflare Dashboard 创建两个 KV 命名空间后，
+# 将 ID 填入下方，或运行:
+#   wrangler kv:namespace create "PROFILE_KV" --preview
+#   wrangler kv:namespace create "IMAGES_KV" --preview
+[[kv_namespaces]]
+binding = "PROFILE_KV"
+id = ""
+preview_id = ""
+
+[[kv_namespaces]]
+binding = "IMAGES_KV"
+id = ""
+preview_id = ""
+
+# 也可以只绑定一个 KV，worker 会自动降级:
+#   [[kv_namespaces]]
+#   binding = "KV"
+#   id = ""
+#   preview_id = ""
+
+# 环境变量建议在 Dashboard 中设置（安全原因）。
+# 本地开发可取消注释:
+# [vars]
+# ADMIN_USERNAME = "admin"
+# ADMIN_PASSWORD = "your-password"
+# SITE_PASSWORD = "optional"
