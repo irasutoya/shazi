@@ -8,13 +8,11 @@ compatibility_date = "2026-05-01"
 #   wrangler kv:namespace create "IMAGES_KV" --preview
 [[kv_namespaces]]
 binding = "PROFILE_KV"
-id = ""
-preview_id = ""
+id = "5aaace0a3c72438c97fc14e547e54210"
 
 [[kv_namespaces]]
 binding = "IMAGES_KV"
-id = ""
-preview_id = ""
+id = "8596decb1bf540599edd3c8100b663b8"
 
 # 也可以只绑定一个 KV，worker 会自动降级:
 #   [[kv_namespaces]]
