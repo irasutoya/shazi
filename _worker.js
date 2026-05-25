@@ -791,6 +791,13 @@ function styles() {
 
 function adminScript() {
   return `
+    function __name(target, value) {
+      try {
+        Object.defineProperty(target, "name", { value, configurable: true });
+      } catch (error) {}
+      return target;
+    }
+
     let people = Array.isArray(window.__PEOPLE__) ? window.__PEOPLE__ : [];
     let activeId = people[0]?.id || null;
     let activeTextarea = null;
