@@ -808,9 +808,6 @@ function adminScript() {
     const imageForm = document.getElementById("imageForm");
     const imageList = document.getElementById("imageList");
 
-    renderAll();
-    refreshImages();
-
     addPerson.addEventListener("click", () => {
       collectActive();
       const person = {
@@ -970,6 +967,9 @@ function adminScript() {
       event.preventDefault();
       event.returnValue = "";
     });
+
+    renderAll();
+    refreshImages();
 
     async function saveAll() {
       collectActive();
@@ -1209,8 +1209,18 @@ function adminScript() {
     function updatePreview(markdown) {
       const preview = document.getElementById("markdownPreview");
       if (!preview) return;
-      preview.innerHTML = renderMarkdown(markdown || "暂无介绍。");
-      enhancePreviewImages(preview);
+      try {
+        preview.innerHTML = renderMarkdown(markdown || "暂无介绍。");
+        enhancePreviewImages(preview);
+      } catch (error) {
+        console.error("Markdown preview failed", error);
+        preview.innerHTML = '<p class="muted">预览渲染失败，但内容仍可编辑和保存。</p>';
+        const fallback = document.createElement("pre");
+        const code = document.createElement("code");
+        code.textContent = markdown || "";
+        fallback.appendChild(code);
+        preview.appendChild(fallback);
+      }
     }
 
     function enhancePreviewImages(preview) {
