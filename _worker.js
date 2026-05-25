@@ -39,10 +39,9 @@ export default {
       }
 
       if (request.method === "GET" && url.pathname === "/admin") {
-        const hasCredentials = hasAdminCredentials(env);
-        const authed = hasCredentials ? await isAuthed(request, env) : true;
+        const authed = await isAuthed(request, env);
         const people = authed ? await loadPeople(dataKV) : [];
-        return htmlResponse(renderAdminPage({ authed, people, hasCredentials }));
+        return htmlResponse(renderAdminPage({ authed, people }));
       }
 
       if (request.method === "POST" && url.pathname === "/admin/login") {
@@ -180,7 +179,7 @@ async function readJsonBody(request) {
 
 async function handleLogin(request, env) {
   if (!hasAdminCredentials(env)) {
-    return redirectResponse("/admin");
+    return htmlResponse(renderLoginError(), 401);
   }
 
   const form = await request.formData();
@@ -197,7 +196,6 @@ async function handleLogin(request, env) {
 }
 
 async function requireAuth(request, env) {
-  if (!hasAdminCredentials(env)) return null;
   if (await isAuthed(request, env)) return null;
   return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
 }
@@ -421,20 +419,13 @@ function renderPersonPage(person) {
   });
 }
 
-function renderAdminPage({ authed, people, hasCredentials }) {
+function renderAdminPage({ authed, people }) {
   if (!authed) return renderLoginPage();
-  const recoveryNotice = hasCredentials ? "" : `
-        <section class="recovery-banner">
-          <strong>恢复模式已开启</strong>
-          <span>当前 Worker 未配置 <code>ADMIN_USERNAME</code> / <code>ADMIN_PASSWORD</code>，后台暂时直接开放。恢复数据后请尽快在 Cloudflare 中补回环境变量。</span>
-        </section>
-  `;
 
   return pageShell({
     title: "傻子管理",
     body: `
       <main class="studio-shell">
-        ${recoveryNotice}
         <header class="studio-top">
           <div>
             <h1>管理后台</h1>
@@ -685,11 +676,6 @@ function styles() {
     .button.danger:hover{filter:brightness(.94)}
     .icon-button{width:34px;height:34px;background:var(--success);color:var(--success-fg);font-size:20px}
     .studio-shell{width:min(1500px,calc(100% - 32px));margin:0 auto;padding:24px 0 40px}
-    .recovery-banner{display:grid;gap:6px;margin-bottom:16px;padding:14px 16px;border:1px solid #f0b429;border-radius:var(--radius-lg);background:#fff8c5;color:#3d2b00}
-    .recovery-banner strong{font-size:15px}
-    .recovery-banner span{font-size:14px;line-height:1.55}
-    .recovery-banner code{background:rgba(255,255,255,.55);border-color:#f0b429;color:inherit}
-    @media (prefers-color-scheme:dark){.recovery-banner{background:#332600;border-color:#9a6700;color:#f8e3a1}.recovery-banner code{background:rgba(255,255,255,.08);border-color:#9a6700}}
     .studio-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;padding:16px 20px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--canvas)}
     .studio-top h1{font-size:22px}
     .top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
